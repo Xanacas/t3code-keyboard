@@ -1065,19 +1065,21 @@ function ChatMarkdownImageFallback(props: { readonly alt: string }) {
   );
 }
 
-/** Markdown images whose bytes load through a signed asset URL from the environment. */
+/**
+ * Markdown images whose bytes load through a signed asset URL from the environment.
+ * `fallbackUrl` is tried directly when the signed URL cannot be issued or fails to load — an
+ * older server rejects the `github-attachment` resource, and public uploads still load direct.
+ */
 const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
   readonly environmentId: EnvironmentId;
   readonly resource: AssetResource;
   readonly alt: string;
+  readonly fallbackUrl?: string;
 }) {
   const assetUrl = useAssetUrlState(props.environmentId, props.resource);
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [failedUrls, setFailedUrls] = useState<ReadonlyArray<string>>([]);
 
-  if (assetUrl._tag === "Failure" || (assetUrl._tag === "Success" && failedUrl === assetUrl.url)) {
-    return <ChatMarkdownImageFallback alt={props.alt} />;
-  }
-  if (assetUrl._tag !== "Success") {
+  if (assetUrl._tag === "Loading") {
     return (
       <span
         role="status"
@@ -1086,14 +1088,24 @@ const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
       />
     );
   }
+  const signedUrl = assetUrl._tag === "Success" ? assetUrl.url : null;
+  const src =
+    signedUrl !== null && !failedUrls.includes(signedUrl)
+      ? signedUrl
+      : props.fallbackUrl !== undefined && !failedUrls.includes(props.fallbackUrl)
+        ? props.fallbackUrl
+        : null;
+  if (src === null) {
+    return <ChatMarkdownImageFallback alt={props.alt} />;
+  }
   return (
     <img
-      src={assetUrl.url}
+      src={src}
       alt={props.alt}
       loading="lazy"
       draggable={false}
       className={CHAT_MARKDOWN_WORKSPACE_IMAGE_CLASS_NAME}
-      onError={() => setFailedUrl(assetUrl.url)}
+      onError={() => setFailedUrls((failed) => (failed.includes(src) ? failed : [...failed, src]))}
     />
   );
 });
@@ -2158,12 +2170,25 @@ function ChatMarkdown({
             />
           );
         }
-        if (imageSource._tag === "GitHubAttachment" && environmentId !== null) {
+        if (imageSource._tag === "GitHubAttachment") {
+          if (environmentId === null) {
+            // No environment to proxy through; public uploads still load directly.
+            return (
+              <img
+                {...props}
+                src={imageSource.url}
+                alt={altText}
+                loading="lazy"
+                className={cn(props.className, CHAT_MARKDOWN_IMAGE_SIZE_CLASS_NAME)}
+              />
+            );
+          }
           return (
             <ChatMarkdownAssetImage
               environmentId={environmentId}
               resource={{ _tag: "github-attachment", url: imageSource.url }}
               alt={altText}
+              fallbackUrl={imageSource.url}
             />
           );
         }

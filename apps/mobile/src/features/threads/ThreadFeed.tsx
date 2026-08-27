@@ -324,21 +324,27 @@ function ThreadMarkdownImageRequest(props: {
   );
 }
 
-/** Markdown image whose bytes load through a signed asset URL from the environment. */
+/**
+ * Markdown image whose bytes load through a signed asset URL from the environment.
+ * `fallbackUri` is tried directly when the signed URL cannot be issued — an older server
+ * rejects the `github-attachment` resource, and public uploads still load direct.
+ */
 function ThreadMarkdownImage(props: {
   readonly environmentId: EnvironmentId;
   readonly resource: AssetResource;
   readonly sourceKey: string;
   readonly alt: string | null;
+  readonly fallbackUri?: string;
   readonly onPressImage: (uri: string) => void;
 }) {
   const assetUrl = useAssetUrlState(props.environmentId, props.resource);
+  const fallbackUri = assetUrl._tag === "Failure" ? (props.fallbackUri ?? null) : null;
 
   return (
     <ThreadMarkdownImageView
-      uri={assetUrl._tag === "Success" ? assetUrl.url : null}
+      uri={assetUrl._tag === "Success" ? assetUrl.url : fallbackUri}
       sourceKey={props.sourceKey}
-      unavailable={assetUrl._tag === "Failure"}
+      unavailable={assetUrl._tag === "Failure" && fallbackUri === null}
       alt={props.alt}
       onPressImage={props.onPressImage}
     />
@@ -1626,6 +1632,7 @@ export const ThreadFeed = memo(function ThreadFeed(props: ThreadFeedProps) {
               : { _tag: "workspace-file", threadId: props.threadId, path: imageSource.path }
           }
           sourceKey={imageSource._tag === "GitHubAttachment" ? imageSource.url : imageSource.path}
+          {...(imageSource._tag === "GitHubAttachment" ? { fallbackUri: imageSource.url } : {})}
           alt={image.alt}
           onPressImage={(uri) => setExpandedImage({ uri })}
         />
