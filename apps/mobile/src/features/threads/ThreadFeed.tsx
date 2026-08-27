@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { KeyboardAwareLegendList } from "@legendapp/list/keyboard";
 import { type LegendListRef } from "@legendapp/list/react-native";
-import type { EnvironmentId, MessageId, ThreadId, TurnId } from "@t3tools/contracts";
+import type { AssetResource, EnvironmentId, MessageId, ThreadId, TurnId } from "@t3tools/contracts";
 import { classifyMarkdownImageSource } from "@t3tools/client-runtime/markdown-images";
 import { CHAT_LIST_ANCHOR_OFFSET, resolveChatListAnchoredEndSpace } from "@t3tools/shared/chatList";
 import { formatElapsed } from "@t3tools/shared/orchestrationTiming";
@@ -324,24 +324,20 @@ function ThreadMarkdownImageRequest(props: {
   );
 }
 
-/** Markdown image whose src is a workspace file — loads through a signed asset URL. */
+/** Markdown image whose bytes load through a signed asset URL from the environment. */
 function ThreadMarkdownImage(props: {
   readonly environmentId: EnvironmentId;
-  readonly threadId: ThreadId;
-  readonly path: string;
+  readonly resource: AssetResource;
+  readonly sourceKey: string;
   readonly alt: string | null;
   readonly onPressImage: (uri: string) => void;
 }) {
-  const assetUrl = useAssetUrlState(props.environmentId, {
-    _tag: "workspace-file",
-    threadId: props.threadId,
-    path: props.path,
-  });
+  const assetUrl = useAssetUrlState(props.environmentId, props.resource);
 
   return (
     <ThreadMarkdownImageView
       uri={assetUrl._tag === "Success" ? assetUrl.url : null}
-      sourceKey={props.path}
+      sourceKey={props.sourceKey}
       unavailable={assetUrl._tag === "Failure"}
       alt={props.alt}
       onPressImage={props.onPressImage}
@@ -1624,8 +1620,12 @@ export const ThreadFeed = memo(function ThreadFeed(props: ThreadFeedProps) {
       return (
         <ThreadMarkdownImage
           environmentId={props.environmentId}
-          threadId={props.threadId}
-          path={imageSource.path}
+          resource={
+            imageSource._tag === "GitHubAttachment"
+              ? { _tag: "github-attachment", url: imageSource.url }
+              : { _tag: "workspace-file", threadId: props.threadId, path: imageSource.path }
+          }
+          sourceKey={imageSource._tag === "GitHubAttachment" ? imageSource.url : imageSource.path}
           alt={image.alt}
           onPressImage={(uri) => setExpandedImage({ uri })}
         />

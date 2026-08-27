@@ -9,6 +9,14 @@ import {
 
 const ASSET_PATH_MAX_LENGTH = 1024;
 
+const GITHUB_USER_ATTACHMENT_URL_PATTERN =
+  /^https:\/\/github\.com\/user-attachments\/assets\/[\w-]+$/iu;
+
+/** GitHub serves these only to an authenticated viewer; load them through the signed asset proxy. */
+export function isGitHubUserAttachmentUrl(value: string): boolean {
+  return GITHUB_USER_ATTACHMENT_URL_PATTERN.test(value.trim());
+}
+
 export const AssetResource = Schema.Union([
   Schema.TaggedStruct("workspace-file", {
     threadId: ThreadId,
@@ -22,6 +30,9 @@ export const AssetResource = Schema.Union([
     // A cache-key hint only. The server reads the authoritative path from the
     // project projection before it issues the signed URL.
     path: Schema.optional(ProjectFaviconPath),
+  }),
+  Schema.TaggedStruct("github-attachment", {
+    url: TrimmedNonEmptyString.check(Schema.isMaxLength(2048)),
   }),
 ]);
 export type AssetResource = typeof AssetResource.Type;
@@ -226,6 +237,17 @@ export class AssetSigningKeyLoadError extends Schema.TaggedErrorClass<AssetSigni
   }
 }
 
+export class AssetRemoteUrlValidationError extends Schema.TaggedErrorClass<AssetRemoteUrlValidationError>()(
+  "AssetRemoteUrlValidationError",
+  {
+    resource: AssetResource,
+  },
+) {
+  override get message(): string {
+    return "Only GitHub attachment URLs can be proxied.";
+  }
+}
+
 export const AssetAccessError = Schema.Union([
   AssetWorkspaceContextNotFoundError,
   AssetWorkspaceContextResolutionError,
@@ -240,5 +262,6 @@ export const AssetAccessError = Schema.Union([
   AssetProjectFaviconInspectionError,
   AssetProjectFaviconNotFoundError,
   AssetSigningKeyLoadError,
+  AssetRemoteUrlValidationError,
 ]);
 export type AssetAccessError = typeof AssetAccessError.Type;

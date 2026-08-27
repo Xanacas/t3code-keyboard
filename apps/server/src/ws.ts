@@ -2017,7 +2017,10 @@ const makeWsRpcLayer = (
           observeRpcEffect(
             WS_METHODS.assetsCreateUrl,
             Effect.gen(function* () {
-              if (input.resource._tag === "attachment") {
+              if (
+                input.resource._tag === "attachment" ||
+                input.resource._tag === "github-attachment"
+              ) {
                 return yield* issueAssetUrl({ resource: input.resource });
               }
               if (input.resource._tag === "project-favicon") {

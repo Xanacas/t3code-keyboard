@@ -1,9 +1,13 @@
+import { isGitHubUserAttachmentUrl } from "@t3tools/contracts";
+
 const DIRECT_IMAGE_SOURCE_PATTERN = /^(?:https?:|data:|blob:|\/\/)/i;
 const URI_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
 
 export type MarkdownImageSource =
   | { readonly _tag: "Direct"; readonly uri: string }
+  /** GitHub serves these only to an authenticated viewer; load through the signed asset proxy. */
+  | { readonly _tag: "GitHubAttachment"; readonly url: string }
   | { readonly _tag: "WorkspaceFile"; readonly path: string }
   | { readonly _tag: "Blocked" };
 
@@ -76,7 +80,9 @@ export function classifyMarkdownImageSource(
     return { _tag: "Blocked" };
   }
   if (DIRECT_IMAGE_SOURCE_PATTERN.test(source)) {
-    return { _tag: "Direct", uri: source };
+    return isGitHubUserAttachmentUrl(source)
+      ? { _tag: "GitHubAttachment", url: source }
+      : { _tag: "Direct", uri: source };
   }
 
   if (/^file:/i.test(source)) {

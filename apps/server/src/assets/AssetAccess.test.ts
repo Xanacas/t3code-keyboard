@@ -442,4 +442,21 @@ describe("AssetAccess", () => {
       expect(error.cause).toBe(resolutionCause);
     }).pipe(Effect.provide(testLayer)),
   );
+
+  it.effect("issues GitHub attachment URLs only for allowlisted uploads", () =>
+    Effect.gen(function* () {
+      const url = "https://github.com/user-attachments/assets/4dcab2ba-0674-4d3b-a3a7-3546601b1550";
+      const result = yield* issueAssetUrl({ resource: { _tag: "github-attachment", url } });
+      const suffix = result.relativeUrl.slice(`${ASSET_ROUTE_PREFIX}/`.length);
+      const [token, fileName] = suffix.split("/") as [string, string];
+
+      expect(yield* resolveAsset(token, fileName)).toEqual({ kind: "github-attachment", url });
+      expect(yield* resolveAsset(`${token}tampered`, fileName)).toBeNull();
+
+      const error = yield* issueAssetUrl({
+        resource: { _tag: "github-attachment", url: "https://evil.example.com/assets/abc" },
+      }).pipe(Effect.flip);
+      expect(error._tag).toBe("AssetRemoteUrlValidationError");
+    }).pipe(Effect.provide(testLayer)),
+  );
 });

@@ -1,6 +1,8 @@
 import type { AssetResource } from "@t3tools/contracts";
 import {
   AssetAttachmentNotFoundError,
+  AssetRemoteUrlValidationError,
+  isGitHubUserAttachmentUrl,
   AssetPreviewTypeValidationError,
   AssetProjectFaviconInspectionError,
   AssetProjectFaviconNotFoundError,
@@ -46,7 +48,7 @@ export const ASSET_ROUTE_PREFIX = "/api/assets";
 
 const SIGNING_SECRET_NAME = "asset-access-signing-key";
 const ASSET_TOKEN_TTL_MS = 60 * 60 * 1000;
-const PROJECT_FAVICON_TOKEN_BUCKET_MS = 30 * 60 * 1000;
+const STABLE_URL_TOKEN_BUCKET_MS = 30 * 60 * 1000;
 const PROJECT_FAVICON_VERSION_PREFIX = "v";
 const PREVIEW_ASSET_EXTENSIONS = new Set([
   ...WORKSPACE_BROWSER_PREVIEW_EXTENSIONS,
@@ -94,6 +96,12 @@ const AssetClaimsSchema = Schema.Union([
     filePath: Schema.String,
     expiresAt: Schema.Number,
   }),
+  Schema.Struct({
+    version: Schema.Literal(1),
+    kind: Schema.Literal("github-attachment"),
+    url: Schema.String,
+    expiresAt: Schema.Number,
+  }),
 ]);
 type AssetClaims = typeof AssetClaimsSchema.Type;
 
@@ -101,7 +109,9 @@ const AssetClaimsJson = Schema.fromJsonString(AssetClaimsSchema);
 const decodeAssetClaims = Schema.decodeUnknownOption(AssetClaimsJson);
 const encodeAssetClaims = Schema.encodeSync(AssetClaimsJson);
 
-export type ResolvedAsset = { readonly kind: "file"; readonly path: string };
+export type ResolvedAsset =
+  | { readonly kind: "file"; readonly path: string }
+  | { readonly kind: "github-attachment"; readonly url: string };
 
 function decodeClaims(encodedPayload: string): AssetClaims | null {
   try {
@@ -275,6 +285,15 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
       fileName = path.basename(resolved.relativePath);
       break;
     }
+    case "github-attachment": {
+      const url = input.resource.url;
+      if (!isGitHubUserAttachmentUrl(url)) {
+        return yield* new AssetRemoteUrlValidationError({ resource: input.resource });
+      }
+      claims = { version: 1, kind: "github-attachment", url, expiresAt };
+      fileName = path.basename(url);
+      break;
+    }
     case "attachment": {
       const config = yield* ServerConfig.ServerConfig;
       const attachmentPath = resolveAttachmentPathById({
@@ -411,11 +430,15 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
         }),
     ),
   );
-  if (claims.kind === "project-favicon" || claims.kind === "project-favicon-external") {
+  // Bucketed expiry keeps repeat issuances byte-identical, so browser caches get hits.
+  if (
+    claims.kind === "project-favicon" ||
+    claims.kind === "project-favicon-external" ||
+    claims.kind === "github-attachment"
+  ) {
     const issuedAt = yield* Clock.currentTimeMillis;
     expiresAt =
-      (Math.floor(issuedAt / PROJECT_FAVICON_TOKEN_BUCKET_MS) + 2) *
-      PROJECT_FAVICON_TOKEN_BUCKET_MS;
+      (Math.floor(issuedAt / STABLE_URL_TOKEN_BUCKET_MS) + 2) * STABLE_URL_TOKEN_BUCKET_MS;
     claims = { ...claims, expiresAt };
   }
   const encodedPayload = base64UrlEncode(encodeAssetClaims(claims));
@@ -444,6 +467,13 @@ export const resolveAsset = Effect.fn("AssetAccess.resolveAsset")(function* (
 
   const claims = decodeClaims(encodedPayload);
   if (!claims || claims.expiresAt <= (yield* Clock.currentTimeMillis)) return null;
+
+  if (claims.kind === "github-attachment") {
+    // Re-checked so a stale claim can never point the proxy at an arbitrary host.
+    return isGitHubUserAttachmentUrl(claims.url)
+      ? ({ kind: "github-attachment", url: claims.url } satisfies ResolvedAsset)
+      : null;
+  }
 
   if (claims.kind === "attachment") {
     const config = yield* ServerConfig.ServerConfig;

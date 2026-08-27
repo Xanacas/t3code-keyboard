@@ -8,6 +8,7 @@ import { FetchHttpClient, HttpRouter, HttpServer } from "effect/unstable/http";
 import * as HttpApiBuilder from "effect/unstable/httpapi/HttpApiBuilder";
 
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
+import * as GitHubAttachmentProxy from "./assets/GitHubAttachmentProxy.ts";
 import * as HostPowerMonitor from "./background/HostPowerMonitor.ts";
 import * as ServerConfig from "./config.ts";
 import {
@@ -444,6 +445,12 @@ const commandReadinessLayer = HttpRouter.middleware(
   { global: true },
 );
 
+const GitHubAttachmentProxyLive = GitHubAttachmentProxy.layer.pipe(
+  Layer.provide(GitHubCli.layer),
+  Layer.provide(VcsProcess.layer),
+  Layer.provide(FetchHttpClient.layer),
+);
+
 const PullRequestServiceLive = PullRequestService.layer.pipe(
   // One registry entry per supported host; the service only knows the registry.
   Layer.provide(PullRequestProviderRegistry.layer),
@@ -473,6 +480,7 @@ export const makeRoutesLayer = Layer.mergeAll(
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(PullRequestServiceLive),
+  Layer.provide(GitHubAttachmentProxyLive),
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer),
   Layer.provide(commandReadinessLayer),

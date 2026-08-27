@@ -14,6 +14,7 @@ import {
   WrapTextIcon,
 } from "lucide-react";
 import type {
+  AssetResource,
   EnvironmentId,
   ScopedThreadRef,
   ServerProviderSkill,
@@ -1064,17 +1065,13 @@ function ChatMarkdownImageFallback(props: { readonly alt: string }) {
   );
 }
 
-/** Markdown images whose src is a workspace file path load through a signed asset URL. */
-const ChatMarkdownWorkspaceImage = memo(function ChatMarkdownWorkspaceImage(props: {
-  readonly threadRef: ScopedThreadRef;
-  readonly path: string;
+/** Markdown images whose bytes load through a signed asset URL from the environment. */
+const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
+  readonly environmentId: EnvironmentId;
+  readonly resource: AssetResource;
   readonly alt: string;
 }) {
-  const assetUrl = useAssetUrlState(props.threadRef.environmentId, {
-    _tag: "workspace-file",
-    threadId: props.threadRef.threadId,
-    path: props.path,
-  });
+  const assetUrl = useAssetUrlState(props.environmentId, props.resource);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   if (assetUrl._tag === "Failure" || (assetUrl._tag === "Success" && failedUrl === assetUrl.url)) {
@@ -2161,11 +2158,24 @@ function ChatMarkdown({
             />
           );
         }
+        if (imageSource._tag === "GitHubAttachment" && environmentId !== null) {
+          return (
+            <ChatMarkdownAssetImage
+              environmentId={environmentId}
+              resource={{ _tag: "github-attachment", url: imageSource.url }}
+              alt={altText}
+            />
+          );
+        }
         if (imageSource._tag === "WorkspaceFile" && threadRef) {
           return (
-            <ChatMarkdownWorkspaceImage
-              threadRef={threadRef}
-              path={imageSource.path}
+            <ChatMarkdownAssetImage
+              environmentId={threadRef.environmentId}
+              resource={{
+                _tag: "workspace-file",
+                threadId: threadRef.threadId,
+                path: imageSource.path,
+              }}
               alt={altText}
             />
           );
@@ -2211,6 +2221,7 @@ function ChatMarkdown({
     canUseShellActions,
     cwd,
     diffThemeName,
+    environmentId,
     fileLinkParentSuffixByPath,
     inlineCodeFileLinkMetaByText,
     isStreaming,
