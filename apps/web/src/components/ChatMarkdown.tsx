@@ -1110,6 +1110,27 @@ const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
   );
 });
 
+/** GitHub attachment with no environment to proxy through: direct load, standard fallback. */
+const ChatMarkdownDirectAttachmentImage = memo(function ChatMarkdownDirectAttachmentImage(props: {
+  readonly url: string;
+  readonly alt: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <ChatMarkdownImageFallback alt={props.alt} />;
+  }
+  return (
+    <img
+      src={props.url}
+      alt={props.alt}
+      loading="lazy"
+      draggable={false}
+      className={CHAT_MARKDOWN_WORKSPACE_IMAGE_CLASS_NAME}
+      onError={() => setFailed(true)}
+    />
+  );
+});
+
 function leadingExternalLinkTextLength(text: string): number {
   const protocol = /^(?:https?:\/\/)/i.exec(text)?.[0];
   if (protocol) return protocol.length;
@@ -2173,15 +2194,7 @@ function ChatMarkdown({
         if (imageSource._tag === "GitHubAttachment") {
           if (environmentId === null) {
             // No environment to proxy through; public uploads still load directly.
-            return (
-              <img
-                {...props}
-                src={imageSource.url}
-                alt={altText}
-                loading="lazy"
-                className={cn(props.className, CHAT_MARKDOWN_IMAGE_SIZE_CLASS_NAME)}
-              />
-            );
+            return <ChatMarkdownDirectAttachmentImage url={imageSource.url} alt={altText} />;
           }
           return (
             <ChatMarkdownAssetImage
