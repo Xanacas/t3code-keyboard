@@ -66,14 +66,13 @@ describe("isGitHubUserAttachmentUrl", () => {
         "https://github.com/user-attachments/assets/4dcab2ba-0674-4d3b-a3a7-3546601b1550",
       ),
     ).toBe(true);
-  });
-
-  it.each([
-    "https://github.com.evil.example.com/user-attachments/assets/a",
-    "https://github.com/user-attachments/assets/a/../../login",
-    "https://github.com/user-attachments/assets/a?next=b",
-    "https://github.com/owner/repo/blob/main/a.png",
-  ])("rejects %s", (url) => {
-    expect(isGitHubUserAttachmentUrl(url)).toBe(false);
+    for (const url of [
+      "https://github.com.evil.example.com/user-attachments/assets/a",
+      "https://github.com/user-attachments/assets/a/../../login",
+      "https://github.com/user-attachments/assets/a?next=b",
+      "https://github.com/owner/repo/blob/main/a.png",
+    ]) {
+      expect(isGitHubUserAttachmentUrl(url)).toBe(false);
+    }
   });
 });

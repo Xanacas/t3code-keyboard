@@ -31,23 +31,15 @@ export const make = Effect.gen(function* () {
 
   const readToken = yield* Effect.cachedWithTTL(
     gitHubCli
-      .execute({
-        cwd: config.stateDir,
-        args: ["auth", "token", "--hostname", "github.com"],
-      })
+      .execute({ cwd: config.stateDir, args: ["auth", "token", "--hostname", "github.com"] })
       .pipe(
-        Effect.map((output) => {
-          const trimmed = output.stdout.trim();
-          return trimmed.length > 0 ? trimmed : null;
-        }),
+        Effect.map((output) => output.stdout.trim() || null),
         Effect.orElseSucceed(() => null),
       ),
     TOKEN_CACHE_TTL,
   );
 
-  const resolveAttachmentLocation: GitHubAttachmentProxy["Service"]["resolveAttachmentLocation"] = (
-    url,
-  ) =>
+  const resolveAttachmentLocation = (url: string) =>
     Effect.gen(function* () {
       const token = yield* readToken;
       const request = HttpClientRequest.get(url, {
