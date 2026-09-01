@@ -24,7 +24,7 @@ export class GitHubAttachmentProxy extends Context.Service<
   }
 >()("t3/assets/GitHubAttachmentProxy") {}
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const gitHubCli = yield* GitHubCli.GitHubCli;
   const httpClient = yield* HttpClient.HttpClient;
   const config = yield* ServerConfig.ServerConfig;

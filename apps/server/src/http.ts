@@ -347,8 +347,7 @@ export const assetRouteLayer = HttpRouter.add(
       }
       return HttpServerResponse.redirect(location, {
         status: 302,
-        // Below the 300-second expiry of GitHub's signed storage URL, so a cached redirect
-        // never lands on an expired one.
+        // Below the 300-second expiry of GitHub's signed storage URL; cached redirects stay fresh.
         headers: { "cache-control": "private, max-age=240" },
       });
     }

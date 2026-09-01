@@ -10,12 +10,9 @@ import {
 
 const ASSET_PATH_MAX_LENGTH = 1024;
 
-const GITHUB_USER_ATTACHMENT_URL_PATTERN =
-  /^https:\/\/github\.com\/user-attachments\/assets\/[\w-]+$/iu;
-
 /** GitHub serves these only to an authenticated viewer; load them through the signed asset proxy. */
 export function isGitHubUserAttachmentUrl(value: string): boolean {
-  return GITHUB_USER_ATTACHMENT_URL_PATTERN.test(value.trim());
+  return /^https:\/\/github\.com\/user-attachments\/assets\/[\w-]+$/iu.test(value.trim());
 }
 
 export const AssetResource = Schema.Union([

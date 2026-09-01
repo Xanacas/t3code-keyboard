@@ -300,12 +300,11 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
       break;
     }
     case "github-attachment": {
-      const url = input.resource.url;
-      if (!isGitHubUserAttachmentUrl(url)) {
+      if (!isGitHubUserAttachmentUrl(input.resource.url)) {
         return yield* new AssetRemoteUrlValidationError({ resource: input.resource });
       }
-      claims = { version: 1, kind: "github-attachment", url, expiresAt };
-      fileName = path.basename(url);
+      claims = { version: 1, kind: "github-attachment", url: input.resource.url, expiresAt };
+      fileName = path.basename(input.resource.url);
       break;
     }
     case "attachment": {

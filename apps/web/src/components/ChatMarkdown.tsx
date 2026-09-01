@@ -2410,17 +2410,14 @@ function ChatMarkdown({
           );
         }
         if (imageSource._tag === "GitHubAttachment") {
-          if (environmentId === null) {
-            // No environment to proxy through; public uploads still load directly.
-            return (
-              <ChatMarkdownDirectAttachmentImage
-                url={imageSource.url}
-                alt={altText}
-                style={authoredSizeStyle}
-              />
-            );
-          }
-          return (
+          // Without an environment to proxy through, public uploads still load directly.
+          return environmentId === null ? (
+            <ChatMarkdownDirectAttachmentImage
+              url={imageSource.url}
+              alt={altText}
+              style={authoredSizeStyle}
+            />
+          ) : (
             <ChatMarkdownAssetImage
               environmentId={environmentId}
               resource={{ _tag: "github-attachment", url: imageSource.url }}

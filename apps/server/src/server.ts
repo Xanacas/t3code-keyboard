@@ -705,8 +705,7 @@ export const makeServerLayer = Layer.unwrap(
 
     return serverApplicationLayer.pipe(
       Layer.provideMerge(runtimeServicesLive),
-      // Route handlers resolve services at serve time, so the proxy must sit in the runtime
-      // context here — providing it to makeRoutesLayer never reaches the request fiber.
+      // Route fibers resolve this at serve time; providing it to makeRoutesLayer never reaches them.
       Layer.provide(GitHubAttachmentProxyLive),
       Layer.provide(activationLayer),
       Layer.provideMerge(serverRelayBrokerTracingLayer),
