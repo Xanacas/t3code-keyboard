@@ -1075,6 +1075,8 @@ const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
   readonly resource: AssetResource;
   readonly alt: string;
   readonly fallbackUrl?: string;
+  readonly width?: number | string | undefined;
+  readonly height?: number | string | undefined;
 }) {
   const assetUrl = useAssetUrlState(props.environmentId, props.resource);
   const [failedUrls, setFailedUrls] = useState<ReadonlyArray<string>>([]);
@@ -1102,6 +1104,8 @@ const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
     <img
       src={src}
       alt={props.alt}
+      width={props.width}
+      height={props.height}
       loading="lazy"
       draggable={false}
       className={CHAT_MARKDOWN_WORKSPACE_IMAGE_CLASS_NAME}
@@ -1114,6 +1118,8 @@ const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
 const ChatMarkdownDirectAttachmentImage = memo(function ChatMarkdownDirectAttachmentImage(props: {
   readonly url: string;
   readonly alt: string;
+  readonly width?: number | string | undefined;
+  readonly height?: number | string | undefined;
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -1123,6 +1129,8 @@ const ChatMarkdownDirectAttachmentImage = memo(function ChatMarkdownDirectAttach
     <img
       src={props.url}
       alt={props.alt}
+      width={props.width}
+      height={props.height}
       loading="lazy"
       draggable={false}
       className={CHAT_MARKDOWN_WORKSPACE_IMAGE_CLASS_NAME}
@@ -2194,7 +2202,14 @@ function ChatMarkdown({
         if (imageSource._tag === "GitHubAttachment") {
           if (environmentId === null) {
             // No environment to proxy through; public uploads still load directly.
-            return <ChatMarkdownDirectAttachmentImage url={imageSource.url} alt={altText} />;
+            return (
+              <ChatMarkdownDirectAttachmentImage
+                url={imageSource.url}
+                alt={altText}
+                width={props.width}
+                height={props.height}
+              />
+            );
           }
           return (
             <ChatMarkdownAssetImage
@@ -2202,6 +2217,8 @@ function ChatMarkdown({
               resource={{ _tag: "github-attachment", url: imageSource.url }}
               alt={altText}
               fallbackUrl={imageSource.url}
+              width={props.width}
+              height={props.height}
             />
           );
         }
