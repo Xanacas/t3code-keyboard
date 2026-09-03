@@ -1,4 +1,3 @@
-import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -7,7 +6,6 @@ import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse";
 
 import { ExitCode } from "effect/unstable/process/ChildProcessSpawner";
 
-import * as ServerConfig from "../config.ts";
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 import * as GitHubAttachmentProxy from "./GitHubAttachmentProxy.ts";
 
@@ -88,10 +86,6 @@ const resolveAttachment = (options: {
             ),
           ),
         ),
-        Layer.provide(
-          ServerConfig.ServerConfig.layerTest(process.cwd(), { prefix: "t3-gh-proxy-" }),
-        ),
-        Layer.provideMerge(NodeServices.layer),
       ),
     ),
   );

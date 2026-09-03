@@ -18,7 +18,7 @@ describe("classifyMarkdownImageSource", () => {
 
   it("routes GitHub user-attachment uploads through the signed asset proxy", () => {
     const url = "https://github.com/user-attachments/assets/4dcab2ba-0674-4d3b-a3a7-3546601b1550";
-    expect(classifyMarkdownImageSource(url, null)).toEqual({ _tag: "GitHubAttachment", url });
+    expect(classifyMarkdownImageSource(url, null)).toEqual({ _tag: "GitHubAttachment", uri: url });
   });
 
   it.each([

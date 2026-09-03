@@ -1283,29 +1283,6 @@ export const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props
   );
 });
 
-/** GitHub attachment with no environment to proxy through: direct load, standard fallback. */
-const ChatMarkdownDirectAttachmentImage = memo(function ChatMarkdownDirectAttachmentImage(props: {
-  readonly url: string;
-  readonly alt: string;
-  readonly style?: CSSProperties | undefined;
-}) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
-    return <ChatMarkdownImageFallback alt={props.alt} />;
-  }
-  return (
-    <img
-      src={props.url}
-      alt={props.alt}
-      style={props.style}
-      loading="lazy"
-      draggable={false}
-      className={CHAT_MARKDOWN_WORKSPACE_IMAGE_CLASS_NAME}
-      onError={() => setFailed(true)}
-    />
-  );
-});
-
 function leadingExternalLinkTextLength(text: string): number {
   const protocol = /^(?:https?:\/\/)/i.exec(text)?.[0];
   if (protocol) return protocol.length;
@@ -2392,7 +2369,21 @@ function ChatMarkdown({
         const copyMarkdown = markdownImageCopy(altText, srcString, authoredTitle);
         const authoredSizeStyle = authoredImageSizeStyle(props.width, props.height);
         const imageSource = classifyMarkdownImageSource(classifiedSrc, imageBaseDir ?? cwd);
-        if (imageSource._tag === "Direct") {
+        if (imageSource._tag === "GitHubAttachment" && environmentId !== null) {
+          return (
+            <ChatMarkdownAssetImage
+              environmentId={environmentId}
+              resource={{ _tag: "github-attachment", url: imageSource.uri }}
+              alt={altText}
+              fallbackUrl={imageSource.uri}
+              copyMarkdown={copyMarkdown}
+              style={authoredSizeStyle}
+              onImageExpand={imageExpand}
+            />
+          );
+        }
+        // Without an environment to proxy through, public GitHub uploads still load directly.
+        if (imageSource._tag === "Direct" || imageSource._tag === "GitHubAttachment") {
           return (
             <img
               {...props}
@@ -2406,26 +2397,6 @@ function ChatMarkdown({
               )}
               style={authoredSizeStyle}
               {...expandableMarkdownImageProps(imageExpand, imageSource.uri, altText)}
-            />
-          );
-        }
-        if (imageSource._tag === "GitHubAttachment") {
-          // Without an environment to proxy through, public uploads still load directly.
-          return environmentId === null ? (
-            <ChatMarkdownDirectAttachmentImage
-              url={imageSource.url}
-              alt={altText}
-              style={authoredSizeStyle}
-            />
-          ) : (
-            <ChatMarkdownAssetImage
-              environmentId={environmentId}
-              resource={{ _tag: "github-attachment", url: imageSource.url }}
-              alt={altText}
-              fallbackUrl={imageSource.url}
-              copyMarkdown={copyMarkdown}
-              style={authoredSizeStyle}
-              onImageExpand={imageExpand}
             />
           );
         }

@@ -1,9 +1,10 @@
+import * as os from "node:os";
+
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
 
-import * as ServerConfig from "../config.ts";
 import * as GitHubCli from "../sourceControl/GitHubCli.ts";
 
 /** `gh auth token` spawns a process; one cached read serves a whole page of images. */
@@ -27,11 +28,11 @@ export class GitHubAttachmentProxy extends Context.Service<
 const make = Effect.gen(function* () {
   const gitHubCli = yield* GitHubCli.GitHubCli;
   const httpClient = yield* HttpClient.HttpClient;
-  const config = yield* ServerConfig.ServerConfig;
 
   const readToken = yield* Effect.cachedWithTTL(
     gitHubCli
-      .execute({ cwd: config.stateDir, args: ["auth", "token", "--hostname", "github.com"] })
+      // `auth token` ignores the cwd; the home directory always exists.
+      .execute({ cwd: os.homedir(), args: ["auth", "token", "--hostname", "github.com"] })
       .pipe(
         Effect.map((output) => output.stdout.trim() || null),
         Effect.orElseSucceed(() => null),

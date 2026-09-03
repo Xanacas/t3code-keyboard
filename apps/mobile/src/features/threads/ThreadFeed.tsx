@@ -2020,10 +2020,10 @@ export const ThreadFeed = memo(function ThreadFeed(props: ThreadFeedProps) {
           environmentId={props.environmentId}
           resource={
             imageSource._tag === "GitHubAttachment"
-              ? { _tag: "github-attachment", url: imageSource.url }
+              ? { _tag: "github-attachment", url: imageSource.uri }
               : { _tag: "workspace-file", threadId: props.threadId, path: imageSource.path }
           }
-          {...(imageSource._tag === "GitHubAttachment" ? { fallbackUri: imageSource.url } : {})}
+          {...(imageSource._tag === "GitHubAttachment" ? { fallbackUri: imageSource.uri } : {})}
           alt={image.alt}
           srcFragment={markdownImageSourceFragment(image.href)}
           onPressPreview={(source) => setExpandedFile((current) => current ?? source)}

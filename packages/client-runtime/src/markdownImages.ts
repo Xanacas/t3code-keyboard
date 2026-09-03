@@ -7,7 +7,7 @@ const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
 export type MarkdownImageSource =
   | { readonly _tag: "Direct"; readonly uri: string }
   /** GitHub serves these only to an authenticated viewer; load through the signed asset proxy. */
-  | { readonly _tag: "GitHubAttachment"; readonly url: string }
+  | { readonly _tag: "GitHubAttachment"; readonly uri: string }
   | { readonly _tag: "WorkspaceFile"; readonly path: string }
   | { readonly _tag: "Blocked" };
 
@@ -87,7 +87,7 @@ export function classifyMarkdownImageSource(
   }
   if (DIRECT_IMAGE_SOURCE_PATTERN.test(source)) {
     return isGitHubUserAttachmentUrl(source)
-      ? { _tag: "GitHubAttachment", url: source }
+      ? { _tag: "GitHubAttachment", uri: source }
       : { _tag: "Direct", uri: source };
   }
 
