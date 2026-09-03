@@ -1,4 +1,4 @@
-import * as os from "node:os";
+import * as NodeOS from "node:os";
 
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -32,7 +32,7 @@ const make = Effect.gen(function* () {
   const readToken = yield* Effect.cachedWithTTL(
     gitHubCli
       // `auth token` ignores the cwd; the home directory always exists.
-      .execute({ cwd: os.homedir(), args: ["auth", "token", "--hostname", "github.com"] })
+      .execute({ cwd: NodeOS.homedir(), args: ["auth", "token", "--hostname", "github.com"] })
       .pipe(
         Effect.map((output) => output.stdout.trim() || null),
         Effect.orElseSucceed(() => null),
