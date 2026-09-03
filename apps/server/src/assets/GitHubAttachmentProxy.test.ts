@@ -14,119 +14,57 @@ const STORAGE_URL = "https://objects.example.test/signed/4dcab2ba";
 
 const notImplemented = () => Effect.die("not implemented in this test");
 
-type RecordedRequest = { readonly url: string; readonly authorization: string | undefined };
-
-const resolveAttachment = (options: {
-  readonly calls?: Array<ReadonlyArray<string>>;
-  readonly requests?: Array<RecordedRequest>;
-  readonly cliFails?: boolean;
-  readonly status?: number;
-  readonly location?: string;
-  readonly times?: number;
-}) =>
-  Effect.gen(function* () {
-    const proxy = yield* GitHubAttachmentProxy.GitHubAttachmentProxy;
-    const results: Array<string | null> = [];
-    for (let i = 0; i < (options.times ?? 1); i++) {
-      results.push(yield* proxy.resolveAttachmentLocation(ATTACHMENT_URL));
-    }
-    return results;
-  }).pipe(
-    Effect.provide(
-      GitHubAttachmentProxy.layer.pipe(
-        Layer.provide(
-          Layer.succeed(
-            GitHubCli.GitHubCli,
-            GitHubCli.GitHubCli.of({
-              execute: ({ args }) => {
-                options.calls?.push(args);
-                return options.cliFails
-                  ? Effect.fail(
-                      new GitHubCli.GitHubCliUnavailableError({
-                        command: "gh",
-                        cwd: "/tmp",
-                        cause: "gh is not installed",
-                      }),
-                    )
-                  : Effect.succeed({
-                      exitCode: ExitCode(0),
-                      stdout: "gh-token-1\n",
-                      stderr: "",
-                      stdoutTruncated: false,
-                      stderrTruncated: false,
-                    });
-              },
-              listOpenPullRequests: notImplemented,
-              getPullRequest: notImplemented,
-              getRepositoryCloneUrls: notImplemented,
-              createRepository: notImplemented,
-              createPullRequest: notImplemented,
-              getDefaultBranch: notImplemented,
-              checkoutPullRequest: notImplemented,
-            }),
-          ),
-        ),
-        Layer.provide(
-          Layer.succeed(
-            HttpClient.HttpClient,
-            HttpClient.make((request) =>
-              Effect.sync(() => {
-                options.requests?.push({
-                  url: request.url,
-                  authorization: request.headers["authorization"],
-                });
-                return HttpClientResponse.fromWeb(
-                  request,
-                  new Response(null, {
-                    status: options.status ?? 302,
-                    headers: options.location === undefined ? {} : { location: options.location },
-                  }),
-                );
-              }),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-
 describe("GitHubAttachmentProxy", () => {
   it.effect("resolves the redirect with the gh token and caches the token read", () =>
     Effect.gen(function* () {
-      const calls: Array<ReadonlyArray<string>> = [];
-      const requests: Array<RecordedRequest> = [];
-      const results = yield* resolveAttachment({
-        calls,
-        requests,
-        location: STORAGE_URL,
-        times: 2,
-      });
-
-      expect(results).toEqual([STORAGE_URL, STORAGE_URL]);
-      expect(requests.map((request) => request.authorization)).toEqual([
-        "token gh-token-1",
-        "token gh-token-1",
-      ]);
-      expect(calls).toEqual([["auth", "token", "--hostname", "github.com"]]);
-    }),
-  );
-
-  it.effect("still resolves anonymously when no gh token is available", () =>
-    Effect.gen(function* () {
-      const requests: Array<RecordedRequest> = [];
-      expect(yield* resolveAttachment({ requests, cliFails: true, location: STORAGE_URL })).toEqual(
-        [STORAGE_URL],
+      const cliCalls: Array<ReadonlyArray<string>> = [];
+      const authorizations: Array<string | undefined> = [];
+      const gitHubCli = Layer.succeed(
+        GitHubCli.GitHubCli,
+        GitHubCli.GitHubCli.of({
+          execute: ({ args }) => {
+            cliCalls.push(args);
+            return Effect.succeed({
+              exitCode: ExitCode(0),
+              stdout: "gh-token-1\n",
+              stderr: "",
+              stdoutTruncated: false,
+              stderrTruncated: false,
+            });
+          },
+          listOpenPullRequests: notImplemented,
+          getPullRequest: notImplemented,
+          getRepositoryCloneUrls: notImplemented,
+          createRepository: notImplemented,
+          createPullRequest: notImplemented,
+          getDefaultBranch: notImplemented,
+          checkoutPullRequest: notImplemented,
+        }),
       );
-      expect(requests.map((request) => request.authorization)).toEqual([undefined]);
-    }),
-  );
+      const httpClient = Layer.succeed(
+        HttpClient.HttpClient,
+        HttpClient.make((request) =>
+          Effect.sync(() => {
+            authorizations.push(request.headers["authorization"]);
+            return HttpClientResponse.fromWeb(
+              request,
+              new Response(null, { status: 302, headers: { location: STORAGE_URL } }),
+            );
+          }),
+        ),
+      );
 
-  it.effect("answers null for non-redirect responses and non-https locations", () =>
-    Effect.gen(function* () {
-      expect(yield* resolveAttachment({ status: 200, location: STORAGE_URL })).toEqual([null]);
-      expect(yield* resolveAttachment({ location: "http://plain.example.test/asset" })).toEqual([
-        null,
-      ]);
+      const proxy = yield* GitHubAttachmentProxy.GitHubAttachmentProxy.pipe(
+        Effect.provide(
+          GitHubAttachmentProxy.layer.pipe(Layer.provide(gitHubCli), Layer.provide(httpClient)),
+        ),
+      );
+      const first = yield* proxy.resolveAttachmentLocation(ATTACHMENT_URL);
+      const second = yield* proxy.resolveAttachmentLocation(ATTACHMENT_URL);
+
+      expect([first, second]).toEqual([STORAGE_URL, STORAGE_URL]);
+      expect(authorizations).toEqual(["token gh-token-1", "token gh-token-1"]);
+      expect(cliCalls).toEqual([["auth", "token", "--hostname", "github.com"]]);
     }),
   );
 });

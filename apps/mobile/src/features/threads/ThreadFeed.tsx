@@ -452,7 +452,6 @@ function ThreadMarkdownImageView(props: {
   readonly sourceKey: string;
   readonly unavailable: boolean;
   readonly alt: string | null;
-  readonly onLoadError?: (uri: string) => void;
   readonly onPressPreview: (source: FilePreviewSource) => void;
 }) {
   const sourceIdentifier = useId();
@@ -524,10 +523,7 @@ function ThreadMarkdownImageView(props: {
                 key={props.uri}
                 uri={props.uri}
                 onLoad={setSourceSize}
-                onError={() => {
-                  setFailedUri(props.uri);
-                  props.onLoadError?.(props.uri!);
-                }}
+                onError={() => setFailedUri(props.uri)}
               />
             </View>
           </Pressable>
@@ -574,11 +570,7 @@ function ThreadMarkdownImageRequest(props: {
   );
 }
 
-/**
- * Environment-hosted image that loads through a signed asset URL.
- * `fallbackUri` is tried directly when the signed URL cannot be issued or fails to load — an
- * older server rejects the `github-attachment` resource, and public uploads still load direct.
- */
+/** Environment-hosted image that loads through a signed asset URL. */
 function ThreadMarkdownImage(props: {
   readonly environmentId: EnvironmentId;
   readonly resource: Extract<
@@ -587,25 +579,13 @@ function ThreadMarkdownImage(props: {
   >;
   readonly alt: string | null;
   readonly srcFragment?: string;
-  readonly fallbackUri?: string;
   readonly onPressPreview: (source: FilePreviewSource) => void;
 }) {
   const assetUrl = useAssetUrlState(props.environmentId, props.resource);
-  const [failedUris, setFailedUris] = useState<ReadonlyArray<string>>([]);
-
-  const signedUri = assetUrl._tag === "Success" ? assetUrl.url + (props.srcFragment ?? "") : null;
-  const signedFailed = signedUri !== null && failedUris.includes(signedUri);
-  const fallbackUri =
-    (assetUrl._tag === "Failure" || signedFailed) &&
-    props.fallbackUri !== undefined &&
-    !failedUris.includes(props.fallbackUri)
-      ? props.fallbackUri
-      : null;
-  const uri = fallbackUri ?? (signedFailed ? null : signedUri);
 
   return (
     <ThreadMarkdownImageView
-      uri={uri}
+      uri={assetUrl._tag === "Success" ? assetUrl.url + (props.srcFragment ?? "") : null}
       sourceKey={
         props.resource._tag === "attachment"
           ? `attachment:${props.resource.attachmentId}`
@@ -613,11 +593,8 @@ function ThreadMarkdownImage(props: {
             ? `github:${props.resource.url}`
             : `workspace:${props.resource.path}`
       }
-      unavailable={uri === null && assetUrl._tag !== "Loading"}
+      unavailable={assetUrl._tag === "Failure"}
       alt={props.alt}
-      onLoadError={(failedUri) =>
-        setFailedUris((failed) => (failed.includes(failedUri) ? failed : [...failed, failedUri]))
-      }
       onPressPreview={props.onPressPreview}
     />
   );
@@ -2023,7 +2000,6 @@ export const ThreadFeed = memo(function ThreadFeed(props: ThreadFeedProps) {
               ? { _tag: "github-attachment", url: imageSource.uri }
               : { _tag: "workspace-file", threadId: props.threadId, path: imageSource.path }
           }
-          {...(imageSource._tag === "GitHubAttachment" ? { fallbackUri: imageSource.uri } : {})}
           alt={image.alt}
           srcFragment={markdownImageSourceFragment(image.href)}
           onPressPreview={(source) => setExpandedFile((current) => current ?? source)}

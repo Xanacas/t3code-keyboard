@@ -1219,11 +1219,7 @@ function ChatMarkdownImageFallback(props: {
   );
 }
 
-/**
- * Environment-hosted images load through a signed asset URL.
- * `fallbackUrl` is tried directly when the signed URL cannot be issued or fails to load — an
- * older server rejects the `github-attachment` resource, and public uploads still load direct.
- */
+/** Environment-hosted images load through a signed asset URL. */
 export const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props: {
   readonly environmentId: EnvironmentId;
   readonly resource: Extract<
@@ -1233,14 +1229,16 @@ export const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props
   readonly alt: string;
   readonly copyMarkdown?: string;
   readonly srcFragment?: string;
-  readonly fallbackUrl?: string;
   readonly style?: CSSProperties | undefined;
   readonly onImageExpand?: ((preview: ExpandedImagePreview) => void) | undefined;
 }) {
   const assetUrl = useAssetUrlState(props.environmentId, props.resource);
-  const [failedUrls, setFailedUrls] = useState<ReadonlyArray<string>>([]);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  if (assetUrl._tag === "Loading") {
+  if (assetUrl._tag === "Failure" || (assetUrl._tag === "Success" && failedUrl === assetUrl.url)) {
+    return <ChatMarkdownImageFallback alt={props.alt} copyMarkdown={props.copyMarkdown} />;
+  }
+  if (assetUrl._tag !== "Success") {
     return (
       <span
         data-markdown-copy={props.copyMarkdown}
@@ -1255,16 +1253,7 @@ export const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props
       />
     );
   }
-  const signedUrl = assetUrl._tag === "Success" ? assetUrl.url + (props.srcFragment ?? "") : null;
-  const src =
-    signedUrl !== null && !failedUrls.includes(signedUrl)
-      ? signedUrl
-      : props.fallbackUrl !== undefined && !failedUrls.includes(props.fallbackUrl)
-        ? props.fallbackUrl
-        : null;
-  if (src === null) {
-    return <ChatMarkdownImageFallback alt={props.alt} copyMarkdown={props.copyMarkdown} />;
-  }
+  const src = assetUrl.url + (props.srcFragment ?? "");
   return (
     <img
       src={src}
@@ -1278,7 +1267,7 @@ export const ChatMarkdownAssetImage = memo(function ChatMarkdownAssetImage(props
       )}
       style={props.style}
       {...expandableMarkdownImageProps(props.onImageExpand, src, props.alt)}
-      onError={() => setFailedUrls((failed) => (failed.includes(src) ? failed : [...failed, src]))}
+      onError={() => setFailedUrl(assetUrl.url)}
     />
   );
 });
@@ -2375,7 +2364,6 @@ function ChatMarkdown({
               environmentId={environmentId}
               resource={{ _tag: "github-attachment", url: imageSource.uri }}
               alt={altText}
-              fallbackUrl={imageSource.uri}
               copyMarkdown={copyMarkdown}
               style={authoredSizeStyle}
               onImageExpand={imageExpand}
