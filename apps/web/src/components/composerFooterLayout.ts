@@ -24,6 +24,7 @@ export function shouldUseCompactComposerFooter(
 }
 
 export function shouldUseRestingComposerLayout(input: {
+  autoCollapseEnabled: boolean;
   isExistingThread: boolean;
   isMobileViewport: boolean;
   isFocused: boolean;
@@ -38,6 +39,7 @@ export function shouldUseRestingComposerLayout(input: {
   // desktop width, and where the strip is missing or too narrow the controls
   // simply return when the composer is focused.
   return (
+    input.autoCollapseEnabled &&
     input.isExistingThread &&
     !input.isMobileViewport &&
     !input.isFocused &&

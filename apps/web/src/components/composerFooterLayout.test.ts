@@ -76,6 +76,7 @@ describe("shouldUseCompactComposerPrimaryActions", () => {
 
 describe("shouldUseRestingComposerLayout", () => {
   const resting = {
+    autoCollapseEnabled: true,
     isExistingThread: true,
     isMobileViewport: false,
     isFocused: false,
@@ -84,6 +85,10 @@ describe("shouldUseRestingComposerLayout", () => {
 
   it("uses the resting layout for an unfocused desktop composer", () => {
     expect(shouldUseRestingComposerLayout(resting)).toBe(true);
+  });
+
+  it("keeps the composer expanded when auto-collapse is turned off", () => {
+    expect(shouldUseRestingComposerLayout({ ...resting, autoCollapseEnabled: false })).toBe(false);
   });
 
   it("keeps new-thread composers expanded", () => {

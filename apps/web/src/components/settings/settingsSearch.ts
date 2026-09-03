@@ -203,6 +203,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["command menu dollar $ slash /"],
   },
   {
+    id: "composer-auto-collapse",
+    title: "Collapse the composer at rest",
+    to: "/settings/general",
+    searchTerms: ["chat input shrink resting auto collapse expand focus scroll"],
+  },
+  {
     id: "provider-update-checks",
     title: "Provider update checks",
     to: "/settings/general",

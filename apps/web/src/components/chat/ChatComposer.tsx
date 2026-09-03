@@ -3540,6 +3540,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     providerInputSubmissionError !== null ||
     hasImageAttachmentAttention;
   const isComposerResting = shouldUseRestingComposerLayout({
+    autoCollapseEnabled: settings.composerAutoCollapse,
     isExistingThread: routeKind === "server" && activeThreadId !== null,
     isMobileViewport,
     isFocused: isComposerFocused && !isComposerScrollCollapsed,
@@ -3613,7 +3614,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onComposerOverlayHeightChange,
   );
   const canTrackComposerScrollGesture =
-    routeKind === "server" && activeThreadId !== null && !isMobileViewport;
+    settings.composerAutoCollapse &&
+    routeKind === "server" &&
+    activeThreadId !== null &&
+    !isMobileViewport;
   const canScrollCollapseComposer =
     canTrackComposerScrollGesture && !composerHasExpandedChrome && !showInlineTasksBadge;
   composerScrollCollapseEligibleRef.current = canScrollCollapseComposer;

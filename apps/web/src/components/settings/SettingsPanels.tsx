@@ -542,6 +542,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.showSkillsInSlashMenu !== DEFAULT_UNIFIED_SETTINGS.showSkillsInSlashMenu
         ? ["Show skills in slash menu"]
         : []),
+      ...(settings.composerAutoCollapse !== DEFAULT_UNIFIED_SETTINGS.composerAutoCollapse
+        ? ["Collapse the composer at rest"]
+        : []),
       ...(settings.contextWindowMeterEnabled !== DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled
         ? ["Context window indicator"]
         : []),
@@ -625,6 +628,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.sidebarProjectGroupingMode,
       settings.sidebarThreadPreviewCount,
       settings.showSkillsInSlashMenu,
+      settings.composerAutoCollapse,
       settings.timestampFormat,
       settings.wordWrap,
       followSystem,
@@ -703,6 +707,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       diffLayout: DEFAULT_UNIFIED_SETTINGS.diffLayout,
       proactivePanelsEnabled: DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled,
       showSkillsInSlashMenu: DEFAULT_UNIFIED_SETTINGS.showSkillsInSlashMenu,
+      composerAutoCollapse: DEFAULT_UNIFIED_SETTINGS.composerAutoCollapse,
       contextWindowMeterEnabled: DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled,
       environmentIdentificationMode: DEFAULT_UNIFIED_SETTINGS.environmentIdentificationMode,
       glassOpacity: DEFAULT_UNIFIED_SETTINGS.glassOpacity,
@@ -2330,6 +2335,32 @@ export function GeneralSettingsPanel() {
                 updateSettings({ showSkillsInSlashMenu: Boolean(checked) })
               }
               aria-label="Show skills in slash menu"
+            />
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("composer-auto-collapse")}
+          description="Shrink the composer to a single line when it loses focus or you scroll the conversation. Turn off to keep the full composer visible."
+          resetAction={
+            settings.composerAutoCollapse !== DEFAULT_UNIFIED_SETTINGS.composerAutoCollapse ? (
+              <SettingResetButton
+                label="composer collapse"
+                onClick={() =>
+                  updateSettings({
+                    composerAutoCollapse: DEFAULT_UNIFIED_SETTINGS.composerAutoCollapse,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.composerAutoCollapse}
+              onCheckedChange={(checked) =>
+                updateSettings({ composerAutoCollapse: Boolean(checked) })
+              }
+              aria-label="Collapse the composer at rest"
             />
           }
         />
