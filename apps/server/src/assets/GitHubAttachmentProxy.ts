@@ -46,13 +46,15 @@ const make = Effect.gen(function* () {
       const request = HttpClientRequest.get(url, {
         headers: token === null ? {} : { authorization: `token ${token}` },
       });
-      const response = yield* httpClient
+      // Scoped so the unread body is aborted on exit instead of holding the connection.
+      const response = yield* HttpClient.withScope(httpClient)
         .execute(request)
         .pipe(Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }));
       if (response.status < 300 || response.status >= 400) return null;
       const location = response.headers["location"];
       return location !== undefined && location.startsWith("https://") ? location : null;
     }).pipe(
+      Effect.scoped,
       Effect.tapError((cause) =>
         Effect.logWarning("Failed to resolve a GitHub attachment.", { url, cause }),
       ),
